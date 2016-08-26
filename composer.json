@@ -1,0 +1,21 @@
+{
+    "name": "core-pos/updater",
+    "description": "Scripts to streamline & simplify git based updates",
+    "require": {
+        "symfony/console": "^3.1",
+        "sebastian/git": "^2.1"
+    },
+    "version": "0.1.0",
+    "license": "GPL2",
+    "authors": [
+        {
+            "name": "Andy Theuninck",
+            "email": "andy@gohanman.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "COREPOS\\Updater\\": "src/"
+        }
+    }
+}
