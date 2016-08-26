@@ -6,6 +6,9 @@ use SebastianBergmann\Git\Git as SebGit;
 
 class Git extends SebGit
 {
+    const FORCE_OURS = 1;
+    const FORCE_THEIRS = 2;
+
     public function fetchURL($remote)
     {
         $info = $this->remote($remote);
@@ -47,7 +50,7 @@ class Git extends SebGit
             $cmd .= " --rebase";
         }
         if ($force) {
-            $cmd .= " -s recursive " . ($rebase ? "-Xours" : "-Xtheirs");
+            $cmd .= " -s recursive " . $this->mapOursTheirs($rebase, $force);
         }
 
         $ret = true;
@@ -59,6 +62,15 @@ class Git extends SebGit
         }
 
         return $ret;
+    }
+
+    public function mapOursTheirs($rebase, $force)
+    {
+        if ($force == self::FORCE_OURS) {
+            return $rebase ? '-Xtheirs' : '-Xours';
+        } elseif ($force == self::FORCE_THEIRS) {
+            return $rebase ? '-Xours' : '-Xtheirs';
+        }
     }
 
     public function branch($name, $source_rev='')

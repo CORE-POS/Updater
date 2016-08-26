@@ -16,7 +16,7 @@ class UpdateAutoCommand extends PathReqCommand
         parent::configure();
         $this->setName('update:auto')
             ->setDescription('Update to the latest version')
-            ->addOption('force', null, InputOption::VALUE_NONE, 'Automatically resolve merge conflicts', null);
+            ->addOption('force', 'f', InputOption::VALUE_REQUIRED, 'Automatically resolve merge conflicts. Specify "ours" or "theirs"', null);
     }
 
     protected function goodTags($tags)
@@ -107,13 +107,19 @@ class UpdateAutoCommand extends PathReqCommand
         }
         $git->branch($test_branch, $branch);
 
-        $force = $input->getOption('force');
+        $force = trim(strtolower($input->getOption('force')));
+        $forceID = false;
+        if ($force && $force !== 'ours' && $force !== 'theirs') {
+            throw new \Exception("Invalid force option: {$force}");
+        } elseif ($force) {
+            $forceID = $force == 'ours' ? Git::FORCE_OURS : Git::FORCE_THEIRS;
+        }
         if ($output->getVerbosity() >= OutputInterface::VERBOSITY_VERBOSE) {
-            $force_cmd = $force ? ' -s recursive -Xtheirs ' : ' ';
+            $force_cmd = $force ? " -s recursive -X{$force} " : ' ';
             $output->writeln("Running: <comment>git pull{$force_cmd}{$repo} {$latest}</comment>");
         }
 
-        $updated = $git->pull($repo, $latest, false, $force);
+        $updated = $git->pull($repo, $latest, false, $forceID);
         if ($updated !== true) {
             $output->writeln("<error>Unable to complete update</error>");
             $output->writeln("Details:");
