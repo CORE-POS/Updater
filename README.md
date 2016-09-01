@@ -7,5 +7,5 @@ Run composer install to get dependencies
 Edit config.json and set the primary git repo URL.
 
 # Usage
-Run `updater.php` to see options.
+Run `php bin/updater` to see options.
 

@@ -16,6 +16,7 @@ class UpdateAutoCommand extends PathReqCommand
         parent::configure();
         $this->setName('update:auto')
             ->setDescription('Update to the latest version')
+            ->addOption('merge', 'm', InputOption::VALUE_NONE, 'Perform a merge instead of checking out the latest tag', null)
             ->addOption('force', 'f', InputOption::VALUE_REQUIRED, 'Automatically resolve merge conflicts. Specify "ours" or "theirs"', null);
     }
 
@@ -101,36 +102,40 @@ class UpdateAutoCommand extends PathReqCommand
             return;
         }
 
-        $test_branch = 'snapshot-' . $current . '-' . date('Y-m-d-His');
-        if ($output->getVerbosity() >= OutputInterface::VERBOSITY_VERBOSE) {
-            $output->writeln("Running: <comment>git branch {$test_branch} {$branch}</comment>");
-        }
-        $git->branch($test_branch, $branch);
+        $merge = $input->getOption('merge');
+        if ($merge) {
+            $git->branch($test_branch, $branch);
+            $test_branch = 'snapshot-' . $current . '-' . date('Y-m-d-His');
+            if ($output->getVerbosity() >= OutputInterface::VERBOSITY_VERBOSE) {
+                $output->writeln("Running: <comment>git branch {$test_branch} {$branch}</comment>");
+            }
+            $force = trim(strtolower($input->getOption('force')));
+            $forceID = false;
+            if ($force && $force !== 'ours' && $force !== 'theirs') {
+                throw new \Exception("Invalid force option: {$force}");
+            } elseif ($force) {
+                $forceID = $force == 'ours' ? Git::FORCE_OURS : Git::FORCE_THEIRS;
+            }
+            if ($output->getVerbosity() >= OutputInterface::VERBOSITY_VERBOSE) {
+                $force_cmd = $force ? " -s recursive -X{$force} " : ' ';
+                $output->writeln("Running: <comment>git pull{$force_cmd}{$repo} {$latest}</comment>");
+            }
 
-        $force = trim(strtolower($input->getOption('force')));
-        $forceID = false;
-        if ($force && $force !== 'ours' && $force !== 'theirs') {
-            throw new \Exception("Invalid force option: {$force}");
-        } elseif ($force) {
-            $forceID = $force == 'ours' ? Git::FORCE_OURS : Git::FORCE_THEIRS;
-        }
-        if ($output->getVerbosity() >= OutputInterface::VERBOSITY_VERBOSE) {
-            $force_cmd = $force ? " -s recursive -X{$force} " : ' ';
-            $output->writeln("Running: <comment>git pull{$force_cmd}{$repo} {$latest}</comment>");
-        }
-
-        $updated = $git->pull($repo, $latest, false, $forceID);
-        if ($updated !== true) {
-            $output->writeln("<error>Unable to complete update</error>");
-            $output->writeln("Details:");
-            foreach (explode("\r\n", $updated) as $line) {
-                $output->writeln($line);
+            $updated = $git->pull($repo, $latest, false, $forceID);
+            if ($updated !== true) {
+                $output->writeln("<error>Unable to complete update</error>");
+                $output->writeln("Details:");
+                foreach (explode("\r\n", $updated) as $line) {
+                    $output->writeln($line);
+                }
+            } else {
+                $output->writeln("\nTo get back to your previous environment temporarily run:");
+                $output->writeln("<comment>git checkout {$test_branch}</comment>");
+                $output->writeln("\nTo undo this update permanently run:");
+                $output->writeln("<comment>git reset --hard {$last['sha1']}");
             }
         } else {
-            $output->writeln("\nTo get back to your previous environment temporarily run:");
-            $output->writeln("<comment>git checkout {$test_branch}</comment>");
-            $output->writeln("\nTo undo this update permanently run:");
-            $output->writeln("<comment>git reset --hard {$last['sha1']}");
+            $git->checkout($latest);
         }
     }
 }
